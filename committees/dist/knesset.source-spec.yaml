@@ -1,0 +1,163 @@
+copy_static_files:
+  pipeline:
+  - run: copy_static_files
+
+
+build:
+  description: prepare the data for rendering, allows to limit rendering to subset of items
+  dependencies:
+  - pipeline: ./committees/kns_committee
+  - datapackage: data/committees/kns_committee/datapackage.json
+  - pipeline: ./people/committee-meeting-attendees
+  - datapackage: data/people/committees/meeting-attendees/datapackage.json
+  - pipeline: ./members/mk_individual
+  - datapackage: data/members/mk_individual/datapackage.json
+  pipeline:
+  - run: load_resource
+    parameters:
+      url: ../../data/committees/kns_committee/datapackage.json
+      resource: kns_committee
+  - run: knesset.load_large_csv_resource
+    parameters:
+      url: ../../data/members/mk_individual/datapackage.json
+      resource: mk_individual_positions
+  - run: knesset.rename_resource
+    parameters: {src: mk_individual_positions, dst: mk_individual}
+  - run: load_resource
+    parameters:
+      url: ../../data/people/committees/meeting-attendees/datapackage.json
+      resource: kns_committeesession
+#  - run: filter
+#    parameters:
+#      resources: kns_committeesession
+#      in:
+#      - CommitteeSessionID: 2068104
+#      - CommitteeSessionID: 2068105
+#      - CommitteeID: 922
+  - run: build_meetings
+  - run: dump.to_path
+    parameters:
+      out-path: ../../data/committees/dist/build_meetings
+
+render_meetings:
+  dependencies:
+  - pipeline: ./committees/dist/build
+  - datapackage: data/committees/dist/build_meetings/datapackage.json
+  pipeline:
+  - run: load_resource
+    parameters:
+      url: ../../data/committees/dist/build_meetings/datapackage.json
+      resource: kns_committee
+  - run: load_resource
+    parameters:
+      url: ../../data/committees/dist/build_meetings/datapackage.json
+      resource: mk_individual
+  - run: load_resource
+    parameters:
+      url: ../../data/committees/dist/build_meetings/datapackage.json
+      resource: kns_committeesession
+  - run: render_meetings
+  - run: dump.to_path
+    parameters:
+      out-path: ../../data/committees/dist/rendered_meetings_stats
+
+render_committees:
+  dependencies:
+  - pipeline: ./committees/dist/render_meetings
+  - datapackage: data/committees/dist/rendered_meetings_stats/datapackage.json
+  - pipeline: ./committees/dist/build
+  - datapackage: data/committees/dist/build_meetings/datapackage.json
+  pipeline:
+  - run: load_resource
+    parameters:
+      url: ../../data/committees/dist/build_meetings/datapackage.json
+      resource: kns_committee
+  - run: load_resource
+    parameters:
+      url: ../../data/committees/dist/build_meetings/datapackage.json
+      resource: mk_individual
+  - run: load_resource
+    parameters:
+      url: ../../data/committees/dist/build_meetings/datapackage.json
+      resource: kns_committeesession
+  - run: load_resource
+    parameters:
+      url: ../../data/committees/dist/rendered_meetings_stats/datapackage.json
+      resource: meetings_stats
+  - run: render_committees
+
+render_homepage:
+  pipeline:
+  - run: render_homepage
+
+create_members:
+  dependencies:
+  - pipeline: ./people/committee-meeting-attendees
+  - datapackage: data/people/committees/meeting-attendees/datapackage.json
+  - pipeline: ./members/mk_individual
+  - datapackage: data/members/mk_individual/datapackage.json
+  pipeline:
+  - run: load_resource
+    parameters:
+      url: ../../data/members/mk_individual/datapackage.json
+      resource:
+      - mk_individual
+      - mk_individual_committees
+      - mk_individual_faction_chairpersons
+      - mk_individual_factions
+      - mk_individual_govministries
+  - run: load_resource
+    parameters:
+      url: ../../data/people/committees/meeting-attendees/datapackage.json
+      resource: kns_committeesession
+  - run: build_members
+
+build_positions:
+  dependencies:
+  - pipeline: ./members/mk_individual
+  - datapackage: data/members/mk_individual/datapackage.json
+  pipeline:
+  # all these tables are loaded into memory
+  - run: knesset.load_large_csv_resource
+    parameters:
+      url: ../../data/members/mk_individual/datapackage.json
+      resource: mk_individual_positions
+  - run: knesset.rename_resource
+    parameters: {src: mk_individual_positions, dst: mk_individual}
+  - run: build_positions
+  - run: dump.to_path
+    parameters:
+      out-path: ../../data/committees/dist/positions_aggr
+
+create_factions:
+  dependencies:
+  - pipeline: ./committees/dist/build_positions
+  - datapackage: data/committees/dist/positions_aggr/datapackage.json
+  pipeline:
+  # all these tables are loaded into memory
+  - run: load_resource
+    parameters:
+      url: ../../data/committees/dist/positions_aggr/datapackage.json
+      resource: members
+  - run: load_resource
+    parameters:
+      url: ../../data/committees/dist/positions_aggr/datapackage.json
+      resource: positions
+  - run: load_resource
+    parameters:
+      url: ../../data/committees/dist/positions_aggr/datapackage.json
+      resource: knessets
+  - run: build_factions
+
+sync-dist:
+  dependencies:
+  - pipeline: ./committees/dist/render_meetings
+  - pipeline: ./committees/dist/render_committees
+  - pipeline: ./committees/dist/render_homepage
+  - pipeline: ./committees/dist/create_members
+  - pipeline: ./committees/dist/create_factions
+  pipeline:
+  - run: knesset.sync
+    parameters:
+      source: "../../data/committees/dist/dist"
+      target: "gs://knesset-data-pipelines/data/dist"

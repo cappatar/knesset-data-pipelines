@@ -1,0 +1,32 @@
+[[source]]
+url = "https://pypi.python.org/simple"
+verify_ssl = true
+name = "pypi"
+
+[packages]
+"datapackage-pipelines[speedup]" = {file = "https://github.com/OriHoch/datapackage-pipelines/archive/1.7.1-oh-2.zip"}
+knesset-data = "*"
+"requests[socks]" = "*"
+botocore = "*"
+"boto3" = "*"
+python-dotenv = "*"
+google-cloud-storage = "*"
+sh = "*"
+datapackage-pipelines-metrics = "*"
+psutil = "*"
+crcmod = "*"
+jsonpickle = "*"
+tika = "*"
+kvfile = "*"
+pyquery = "*"
+"dataflows" = "==0.0.14"
+pymongo = "*"
+tabulate = "*"
+jupyter = "*"
+
+[dev-packages]
+tox = "*"
+pytest = "*"
+
+[requires]
+python_version = "3.6"

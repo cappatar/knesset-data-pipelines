@@ -1,0 +1,357 @@
+### kns dataservice tables
+
+
+kns_person:
+  description: "חברי כנסת ואנשים נוספים כגון מנהלי ועדות"
+  dpp_disabled: true  # migrated to airflow
+  pipeline-type: knesset dataservice
+  schemas-bucket: members
+  dataservice-parameters:
+    incremental-field: LastUpdatedDate
+    resource-name: kns_person
+    service-name: api
+    method-name: "KNS_Person"
+    fields:
+      PersonID:
+        source: "{name}"
+        type: integer
+        description: מספר השורה בטבלה זו
+        primaryKey: true
+      LastName:
+        source: "{name}"
+        type: string
+        description: שם משפחה
+      FirstName:
+        source: "{name}"
+        type: string
+        description: שם פרטי
+      GenderID:
+        source: "{name}"
+        type: integer
+        description: מין
+      GenderDesc:
+        source: "{name}"
+        type: string
+        description: תיאור מין
+      Email:
+        source: "{name}"
+        type: string
+        description: אימייל חבר הכנסת
+      IsCurrent:
+        source: "{name}"
+        type: boolean
+        description: האם בכנסת הנוכחית
+      LastUpdatedDate:
+        source: "{name}"
+        type: datetime
+        description: תאריך עדכון אחרון
+
+
+# יודגש, מסיבות פנימיות הטבלה KNS_Person  מכילה גם שמות של אנשים שאינם חברי כנסת כמו למשל מנהלי הוועדות בכנסת.
+#  כדי לקבל מידע רק על חברי הכנסת, יש לעשות JOIN עם טבלת KNS_PersonToPosition ולפלטר לפי עמודת Position ID
+# (43=ח"כ, 61=ח"כית)
+# סוגי התפקידים הקיימים בכנסת
+kns_position:
+  description: "סוגי התפקידים הקיימים בכנסת"
+  dpp_disabled: true  # migrated to airflow
+  pipeline-type: knesset dataservice
+  schemas-bucket: members
+  dataservice-parameters:
+    incremental-field: LastUpdatedDate
+    resource-name: kns_position
+    service-name: api
+    method-name: "KNS_Position"
+    fields:
+      PositionID:
+        source: "{name}"
+        type: integer
+        description: קוד תפקיד
+        primaryKey: true
+      Description:
+        source: "{name}"
+        type: string
+        description: תיאור התפקיד (חבר כנסת, יו"ר ועדה, שר ועוד)
+      GenderID:
+        source: "{name}"
+        type: integer
+        description: קוד מגדר
+      GenderDesc:
+        source: "{name}"
+        type: string
+        description: תיאור מגדר
+      LastUpdatedDate:
+        source: "{name}"
+        type: datetime
+        description: תאריך עדכון אחרון
+
+
+# יודגש, מסיבות פנימיות הטבלה KNS_Person  מכילה גם שמות של אנשים שאינם חברי כנסת כמו למשל מנהלי הוועדות בכנסת.
+# כדי לקבל מידע רק על חברי הכנסת, יש לעשות JOIN עם טבלת KNS_PersonToPosition ולפלטר לפי עמודת Position ID
+# (43=ח"כ, 61=ח"כית)
+kns_persontoposition:
+  description: "קשר בין חברי כנסת לתפקידים שלהם"
+  dpp_disabled: true  # migrated to airflow
+  pipeline-type: knesset dataservice
+  schemas-bucket: members
+  dataservice-parameters:
+    incremental-field: LastUpdatedDate
+    resource-name: kns_persontoposition
+    service-name: api
+    method-name: "KNS_PersonToPosition"
+    fields:
+      PersonToPositionID:
+        source: "{name}"
+        type: integer
+        description: מספר השורה בטבלה זו
+        primaryKey: true
+      PersonID:
+        source: "{name}"
+        type: integer
+        description: קוד זיהוי לאדם
+      PositionID:
+        source: "{name}"
+        type: integer
+        description: קוד זיהוי לתפקיד
+      KnessetNum:
+        source: "{name}"
+        type: integer
+        description: מספר כנסת
+      GovMinistryID:
+        source: "{name}"
+        type: integer
+        description: מספר שורה בטבלת הכנסת
+      GovMinistryName:
+        source: "{name}"
+        type: string
+        description: שם הכנסת
+      DutyDesc:
+        source: "{name}"
+        type: string
+        description: תיאור התפקיד
+      FactionID:
+        source: "{name}"
+        type: integer
+        description: קוד סיעה
+      FactionName:
+        source: "{name}"
+        type: string
+        description: שם
+      GovernmentNum:
+        source: "{name}"
+        type: integer
+        description: מספר הממשלה
+      CommitteeID:
+        source: "{name}"
+        type: integer
+        description: מספר ועידה
+      CommitteeName:
+        source: "{name}"
+        type: string
+        description: שם ועידה
+      StartDate:
+        source: "{name}"
+        type: datetime
+        description: תאריך התחלה
+      FinishDate:
+        source: "{name}"
+        type: datetime
+        description: תאריך סיום
+      IsCurrent:
+        source: "{name}"
+        type: boolean
+        description: האם מדובר בכנסת הנוכחית
+      LastUpdatedDate:
+        source: "{name}"
+        type: datetime
+        description: תאריך עדכון אחרון
+
+
+kns_mksitecode:
+  dpp_disabled: true  # migrated to airflow
+  pipeline-type: knesset dataservice
+  schemas-bucket: members
+  dataservice-parameters:
+    resource-name: kns_mksitecode
+    service-name: api
+    method-name: "KNS_MkSiteCode"
+    fields:
+      MKSiteCode:
+        source: "{name}"
+        type: integer
+        description: מספר השורה בטבלה זו
+        primaryKey: true
+      KnsID:
+        source: "{name}"
+        type: integer
+        description: קוד הח"כ בבסיס הנתונים של סנהדרין (משמש את הטבלאות המתוארות במסמך זה)
+      SiteId:
+        source: "{name}"
+        type: integer
+        description: קוד הח"כ בטבלאות אתר הכנסת הישן (משמש לזיהוי הח"כ בחלק מדפי האתר)
+
+
+mk_individual:
+  description: "מידע מפורט אודות חברי הכנסת כולל מידע מקושר ומורחב מטבלאות ומקורות שונים"
+  dependencies:
+  - pipeline: ./members/kns_mksitecode
+  - datapackage: data/members/kns_mksitecode/datapackage.json
+  # this pipeline is broken - skipping until fixed
+  # - pipeline: ./members/kns_persontoposition
+  - datapackage: data/members/kns_persontoposition/datapackage.json
+  - pipeline: ./members/kns_position
+  - datapackage: data/members/kns_position/datapackage.json
+  - pipeline: ./members/kns_person
+  - datapackage: data/members/kns_person/datapackage.json
+  - pipeline: ./knesset/kns_knessetdates
+  - datapackage: data/knesset/kns_knessetdates/datapackage.json
+  pipeline:
+  - run: load_resource
+    parameters:
+      url: ../data/members/kns_mksitecode/datapackage.json
+      resource: kns_mksitecode
+  - run: load_resource
+    parameters:
+      url: ../data/members/kns_persontoposition/datapackage.json
+      resource: kns_persontoposition
+  - run: load_resource
+    parameters:
+      url: ../data/members/kns_position/datapackage.json
+      resource: kns_position
+  - run: load_resource
+    parameters:
+      url: ../data/members/kns_person/datapackage.json
+      resource: kns_person
+  - run: load_resource
+    parameters:
+      url: ../data/knesset/kns_knessetdates/datapackage.json
+      resource: kns_knessetdates
+  - run: join_mks
+#    parameters:
+#      filter-knesset-num: [25]
+#      filter-is-current: true
+#  - run: dump.to_path
+#    parameters:
+#      out-path: ../data/members/mk_individual
+  - run: knesset.dump_to_path
+    parameters:
+      out-path: ../data/members/mk_individual
+      storage-url: http://storage.googleapis.com/knesset-data-pipelines/data/members/mk_individual
+  - run: knesset.dump_to_sql
+    parameters:
+      tables:
+        members_mk_individual:
+          resource-name: mk_individual
+        members_mk_individual_names:
+          resource-name: mk_individual_names
+        members_mk_individual_factions:
+          resource-name: mk_individual_factions
+        members_mk_individual_faction_chairpersons:
+          resource-name: mk_individual_faction_chairpersons
+        members_mk_individual_committees:
+          resource-name: mk_individual_committees
+        members_mk_individual_govministries:
+          resource-name: mk_individual_govministries
+        members_factions:
+          resource-name: factions
+        members_faction_memberships:
+          resource-name: faction_memberships
+
+
+presence:
+  description: "מידע על הנוכחות של חברי הכנסת"
+  schedule:
+    crontab: "10 1 * * *"
+  dependencies:
+  - pipeline: ./members/mk_individual
+  - datapackage: data/members/mk_individual/datapackage.json
+  - pipeline: ./members/kns_mksitecode
+  - datapackage: data/members/kns_mksitecode/datapackage.json
+  pipeline:
+  - run: load_resource
+    parameters:
+      url: ../data/members/mk_individual/datapackage.json
+      resource: mk_individual
+  - run: load_resource
+    parameters:
+      url: ../data/members/kns_mksitecode/datapackage.json
+      resource: kns_mksitecode
+  - run: read_presence
+    parameters:
+      # old presence data from oknesset
+      presence-oknesset-url: https://storage.googleapis.com/knesset-data-pipelines/data/members/presence/presence-oknesset.txt
+      # new presence data - continuously updated by presence container
+      # see https://github.com/OriHoch/knesset-data-k8s/tree/master/charts-external/pipelines/presence
+      # curl https://storage.googleapis.com/knesset-data-pipelines/data/members/presence/presence.txt > data/members/presence/presence.txt
+      presence-path: ../data/members/presence/presence.txt
+  - run: knesset.dump_to_path
+    parameters:
+      out-path: ../data/members/presence
+      storage-url: http://storage.googleapis.com/knesset-data-pipelines/data/members/presence
+  - run: knesset.dump_to_sql
+    parameters:
+      tables:
+        members_presence:
+          resource-name: presence
+
+#
+#
+#
+#kns_members:
+#  description: >
+#    <p>Create view from members tables</p>
+#  schedule:
+#    crontab: "10 0 * * *"
+#  pipeline:
+#    - run: ..datapackage_pipelines_knesset.common.processors.load_sql_resource
+#      parameters:
+#        schema-bucket: members
+#        resource-name: kns_persontoposition
+#        table: kns_persontoposition
+#    - run: ..datapackage_pipelines_knesset.common.processors.dump_fields
+#      parameters:
+#        input-resource: kns_persontoposition
+#        output-resource: kns_members
+#        schema:
+#          fields: [
+#            {name: "PersonID", type: "integer", from: "PersonID", required: "true"},
+#            {name: "KnessetNum", type: "integer", from: "KnessetNum", default: "0"},
+#            {name: "FactionName", type: "string", from: "FactionName", default: "-"}
+#          ]
+#          primaryKey: ["PersonID", "KnessetNum", "FactionName"]
+#    - run: dump.to_sql
+#      parameters:
+#        tables:
+#          kns_members:
+#            resource-name: kns_members
+#            mode: update
+#
+#
+#kns_committee_members:
+#  description: >
+#    <p>Create view from members tables</p>
+#  schedule:
+#    crontab: "10 0 * * *"
+#  pipeline:
+#    - run: ..datapackage_pipelines_knesset.common.processors.load_sql_resource
+#      parameters:
+#        schema-bucket: members
+#        resource-name: kns_persontoposition
+#        table: kns_persontoposition
+#    - run: ..datapackage_pipelines_knesset.common.processors.dump_fields
+#      parameters:
+#        input-resource: kns_persontoposition
+#        output-resource: kns_committee_members
+#        schema:
+#          fields: [
+#            {name: "CommitteeID", type: "integer", from: "CommitteeID", required: "true"},
+#            {name: "PersonID", type: "integer", from: "PersonID", required: "true"},
+#            {name: "KnessetNum", type: "integer", from: "KnessetNum", default: "0"},
+#            {name: "PositionID", type: "integer", from: "PositionID", default: "0"}
+#          ]
+#          primaryKey: ["CommitteeID", "PersonID", "KnessetNum"]
+#    - run: dump.to_sql
+#      parameters:
+#        tables:
+#          kns_committee_members:
+#            resource-name: kns_committee_members
+#            mode: update

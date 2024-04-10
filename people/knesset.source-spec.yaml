@@ -1,0 +1,421 @@
+source-data-stats:
+  # description: calculate some stats about the source data
+  dependencies:
+  - pipeline: ./committees/kns_committeesession
+  - datapackage: data/committees/kns_committeesession/datapackage.json
+  - pipeline: ./members/mk_individual
+  - datapackage: data/members/mk_individual/datapackage.json
+  pipeline:
+  - run: load_resource
+    parameters:
+      url: ../data/committees/kns_committeesession/datapackage.json
+      resource: kns_committeesession
+  - run: knesset.load_large_csv_resource
+    parameters:
+      url: ../data/members/mk_individual/datapackage.json
+      resource: mk_individual_positions
+  - run: knesset.rename_resource
+    parameters: {src: mk_individual_positions, dst: mk_individual}
+  - run: source_data_stats
+
+committee-meeting-attendees:
+  description: רשימת משתתפים בפגישות ועדה
+  dependencies:
+  - pipeline: ./committees/kns_committeesession
+  - datapackage: data/committees/kns_committeesession/datapackage.json
+  - pipeline: ./members/mk_individual
+  - datapackage: data/members/mk_individual/datapackage.json
+  pipeline:
+  - run: knesset.load_large_csv_resource
+    parameters:
+      url: ../data/members/mk_individual/datapackage.json
+      resource: mk_individual_positions
+  - run: knesset.rename_resource
+    parameters: {src: mk_individual_positions, dst: mk_individual}
+  - run: load_resource
+    parameters:
+      url: ../data/committees/kns_committeesession/datapackage.json
+      resource: kns_committeesession
+#  - run: filter
+#    cache: true
+#    parameters:
+#      resources: kns_committeesession
+#      in:
+#      - CommitteeSessionID: 2059313
+  - run: committee_meeting_attendees
+#    parameters:
+#      filter-meeting-id: [540838, 2025600, 2019698,2068132,2068104]
+#      filter-committee-id: [198]
+  - run: join_committee_meeting_attendees_mks
+  - run: knesset.dump_to_path
+    parameters:
+      out-path: ../data/people/committees/meeting-attendees
+      storage-url: http://storage.googleapis.com/knesset-data-pipelines/data/people/committees/meeting-attendees
+  - run: knesset.dump_to_sql
+    parameters:
+      tables:
+        people_committees_meeting_attendees:
+          resource-name: kns_committeesession
+
+committee-meeting-speaker-stats:
+  description: סטטיסטיקות עבור כל חלק דיבור בפרוטוקולים של ישיבות ועדה
+  dependencies:
+  - pipeline: ./people/committee-meeting-attendees
+  - datapackage: data/people/committees/meeting-attendees/datapackage.json
+  - datapackage: data/members/mk_individual/datapackage.json
+  pipeline:
+  - run: load_resource
+    parameters:
+      url: ../data/members/mk_individual/datapackage.json
+      resource: mk_individual_factions
+  - run: load_resource
+    parameters:
+      url: ../data/members/mk_individual/datapackage.json
+      resource: mk_individual_names
+  - run: load_resource
+    parameters:
+      url: ../data/people/committees/meeting-attendees/datapackage.json
+      resource: kns_committeesession
+#  - run: filter
+#    cache: true
+#    parameters:
+#      resources: kns_committeesession
+#      in:
+#      - CommitteeSessionID: 2059313
+#      - CommitteeSessionID: 86485
+#      - CommitteeSessionID: 2058899
+  - run: committee_meeting_speaker_stats
+    parameters:
+      # ratios for matching between header and category
+      MK_MATCH_RATIO: 80
+      LEGAL_ADVISOR_MATCH_RATIO: 80
+      INVITEE_MATCH_RATIO: 80
+      # ratios for matching between name_role and category
+      NAME_ROLE_DEFAULT_MATCH_RATIO: 80
+      NAME_ROLE_OFFICE_MATCH_RATIO: 75
+  - run: knesset.dump_to_path
+    parameters:
+      out-path: ../data/people/committees/meeting-speaker-stats
+      storage-url: http://storage.googleapis.com/knesset-data-pipelines/data/people/committees/meeting-speaker-stats
+  - run: knesset.dump_to_sql
+    parameters:
+      tables:
+        people_committees_meeting_speaker_stats:
+          resource-name: speaker_stats
+
+## WIP
+#committee-meeting-speakers:
+#  description: extract all the spearker names from the meeting protocols
+#  piepline:
+#  - run: load_resource
+#    parameters:
+#      url: data/committees/joined-meetings/datapackage.json
+#      resource: kns_committeesession
+#  - run: committee_meeting_speakers
+#    parameters: {}
+##      filter-meeting-id: [247987]
+##      filter-committee-id: [198]
+#  - run: dump.to_path
+#    parameters:
+#      out-path: data/committees/meeting-speakers
+
+committee-meeting-attendees-mks-stats:
+  description: אגרגציה של נתונים אודות המשתתפים בועדות וקישורם לנתונים אודות חברי הכנסת
+  dependencies:
+  - pipeline: ./members/mk_individual
+  - datapackage: data/members/mk_individual/datapackage.json
+  - pipeline: ./people/committee-meeting-attendees
+  - datapackage: data/people/committees/meeting-attendees/datapackage.json
+  pipeline:
+  - run: knesset.load_large_csv_resource
+    parameters:
+      url: ../data/members/mk_individual/datapackage.json
+      resource: mk_individual_positions
+  - run: knesset.rename_resource
+    parameters: {src: mk_individual_positions, dst: mk_individual}
+  - run: load_resource
+    parameters:
+      url: ../data/people/committees/meeting-attendees/datapackage.json
+      resource: kns_committeesession
+  - run: committee_meeting_attendees_mks_stats
+  - run: knesset.dump_to_path
+    parameters:
+      out-path: ../data/people/committees/committee-meeting-attendees-mks-stats
+      storage-url: http://storage.googleapis.com/knesset-data-pipelines/data/people/committees/committee-meeting-attendees-mks-stats
+  - run: knesset.dump_to_sql
+    parameters:
+      tables:
+        people_committees_meeting_attendees_mks_stats:
+          resource-name: mk_attendance
+
+committee-meeting-attendees-mks-full-stats:
+  description: "הרחבת וקישור המידע אודות חברי הכנסת למידע על נוכחותם בועדות"
+  dependencies:
+  - pipeline: ./members/mk_individual
+  - datapackage: data/members/mk_individual/datapackage.json
+  - pipeline: ./people/committee-meeting-attendees
+  - datapackage: data/people/committees/meeting-attendees/datapackage.json
+  - pipeline: ./committees/kns_committeesession
+  - datapackage: data/committees/kns_committeesession/datapackage.json
+  - pipeline: ./knesset/kns_knessetdates
+  - datapackage: data/knesset/kns_knessetdates/datapackage.json
+  pipeline:
+  - run: knesset.flow_dpp
+    parameters:
+      module: people.committee_meeting_attendees_mks_full_stats
+  - run: load_resource
+    parameters:
+      url: ../data/people/committees/meeting_attendees_mks_full_stats/datapackage.json
+      resource: meeting_attendees_mks_full_stats
+  - run: knesset.dump_to_sql
+    parameters:
+      tables:
+        people_committees_meeting_attendees_mks_full_stats:
+          resource-name: meeting_attendees_mks_full_stats
+  - run: knesset.sync
+    parameters:
+      source: ../data/people/committees/meeting_attendees_mks_full_stats/
+      target: gs://knesset-data-pipelines/data/people/committees/meeting_attendees_mks_full_stats/
+
+plenum-session-voters:
+  dependencies:
+  - pipeline: ./votes/view_vote_rslts_hdr_approved
+  - datapackage: data/votes/view_vote_rslts_hdr_approved/datapackage.json
+  - pipeline: ./plenum/kns_plenumsession
+  - datapackage: data/plenum/kns_plenumsession/datapackage.json
+  pipeline:
+  - run: load_resource
+    parameters:
+      url: ../data/votes/view_vote_rslts_hdr_approved/datapackage.json
+      resource: view_vote_rslts_hdr_approved
+  - run: load_resource
+    parameters:
+      url: ../data/plenum/kns_plenumsession/datapackage.json
+      resource: kns_plenumsession
+  - run: plenum_session_voters
+  - run: knesset.dump_to_path
+    parameters:
+      out-path: ../data/people/plenum/session_voters
+      storage-url: http://storage.googleapis.com/knesset-data-pipelines/data/people/plenum/session_voters
+  - run: knesset.dump_to_sql
+    parameters:
+      tables:
+        people_plenum_session_voters:
+          resource-name: kns_plenumsession
+
+plenum-session-voters-stats:
+  dependencies:
+  - pipeline: ./knesset/kns_knessetdates
+  - datapackage: data/knesset/kns_knessetdates/datapackage.json
+  - pipeline: ./members/mk_individual
+  - datapackage: data/members/mk_individual/datapackage.json
+  - pipeline: ./plenum/kns_plenumsession
+  - datapackage: data/plenum/kns_plenumsession/datapackage.json
+  - pipeline: ./people/plenum-session-voters
+  - datapackage: data/people/plenum/session_voters/datapackage.json
+  pipeline:
+  - run: knesset.flow_dpp
+    parameters:
+      module: people.plenum_session_voters_stats
+  - run: load_resource
+    parameters:
+      url: ../data/people/plenum/session_voters_stats/datapackage.json
+      resource: plenum_session_voters_stats
+  - run: knesset.dump_to_sql
+    parameters:
+      tables:
+        people_plenum_session_voters_stats:
+          resource-name: plenum_session_voters_stats
+  - run: knesset.sync
+    parameters:
+      source: ../data/people/plenum/session_voters_stats/
+      target: gs://knesset-data-pipelines/data/people/plenum/session_voters_stats/
+
+mk-voted-against-majority:
+  # description: for each vote - collect mks that voted against party majority
+  dependencies:
+  - pipeline: ./members/mk_individual
+  - datapackage: data/members/mk_individual/datapackage.json
+  - pipeline: ./votes/view_vote_rslts_hdr_approved_extra
+  - datapackage: data/votes/view_vote_rslts_hdr_approved_extra/datapackage.json
+  pipeline:
+  - run: load_resource
+    parameters:
+      url: ../data/members/mk_individual/datapackage.json
+      resource: mk_individual_factions
+  - run: load_resource
+    parameters:
+      url: ../data/members/mk_individual/datapackage.json
+      resource: faction_memberships
+  - run: load_resource
+    parameters:
+#      limit-rows: 5
+      url: ../data/votes/view_vote_rslts_hdr_approved_extra/datapackage.json
+      resource: view_vote_rslts_hdr_approved
+  - run: mk_voted_against_majority
+    parameters:
+      # vote considered party majority vote
+      # if this percent of mks from the party voted the same way
+      party-majority-percent: 0.66
+      # minimal number of members in a party to consider it for majority votes
+      party-minimal-num-members: 6
+  - run: sort
+    parameters:
+      resources: mk_voted_against_majority
+      sort-by: '{vote_id}-{faction_id}-{mk_id}'
+  - run: knesset.dump_to_path
+    parameters:
+      out-path: ../data/people/mk_voted_against_majority
+      storage-url: http://storage.googleapis.com/knesset-data-pipelines/data/people/mk_voted_against_majority
+  - run: knesset.dump_to_sql
+    parameters:
+      tables:
+        people_mk_voted_against_majority:
+          resource-name: mk_voted_against_majority
+
+mk-party-discipline-stats:
+  dependencies:
+  - pipeline: ./knesset/kns_knessetdates
+  - datapackage: data/knesset/kns_knessetdates/datapackage.json
+  - pipeline: ./members/mk_individual
+  - datapackage: data/members/mk_individual/datapackage.json
+  - pipeline: ./votes/view_vote_rslts_hdr_approved
+  - datapackage: data/votes/view_vote_rslts_hdr_approved/datapackage.json
+  - pipeline: ./people/mk-voted-against-majority
+  - datapackage: data/people/mk_voted_against_majority/datapackage.json
+  pipeline:
+  - run: knesset.flow_dpp
+    parameters:
+      module: people.mk_party_discipline_stats
+  - run: load_resource
+    parameters:
+      url: ../data/people/mk_party_discipline_stats/datapackage.json
+      resource: mk_party_discipline_stats
+  - run: knesset.dump_to_sql
+    parameters:
+      tables:
+        people_mk_party_discipline_stats:
+          resource-name: mk_party_discipline_stats
+  - run: knesset.sync
+    parameters:
+      source: ../data/people/mk_party_discipline_stats/
+      target: gs://knesset-data-pipelines/data/people/mk_party_discipline_stats/
+
+mk-party-discipline-reports:
+  dependencies:
+  - pipeline: ./members/mk_individual
+  - datapackage: data/members/mk_individual/datapackage.json
+  - pipeline: ./people/mk-voted-against-majority
+  - datapackage: data/people/mk_voted_against_majority/datapackage.json
+  pipeline:
+  - run: load_resource
+    parameters:
+      url: ../data/members/mk_individual/datapackage.json
+      resource: [mk_individual_names, factions]
+  - run: load_resource
+    parameters:
+      url: ../data/people/mk_voted_against_majority/datapackage.json
+      resource: mk_voted_against_majority
+  - run: filter
+    parameters:
+      resources: votes_voted_against_majority
+      in:
+      - vote_knesset: 20
+  - run: mk_party_discipline_report
+    parameters:
+      name: knesset_20_all_meetings
+      knesset: 20
+  - run: mk_party_discipline_report
+    parameters:
+      name: knesset_20_kenes_4_2018
+      knesset: 20
+      plenum: 4
+  - run: mk_party_discipline_report
+    parameters:
+      name: knesset_20_kenes_3_2017
+      knesset: 20
+      plenum: 3
+  - run: sort
+    parameters:
+      resources: report_.*
+      sort-by: "{party_non_discipline_votes:08x}"
+      reverse: true
+  - run: sort
+    parameters:
+      resources: details_.*
+      sort-by: "{vote_datetime}-{faction_id:08x}"
+      reverse: true
+  - run: knesset.dump_to_path
+    parameters:
+      out-path: ../data/people/mk_party_discipline_reports
+      storage-url: http://storage.googleapis.com/knesset-data-pipelines/data/people/mk_party_discipline_reports
+  - run: knesset.dump_to_sql
+    parameters:
+      tables:
+        people_mk_party_discipline_knesset_20:
+          resource-name: details_knesset_20_all_meetings
+
+mk-party-discipline-reports-export:
+  dependencies:
+  - pipeline: ./people/mk-party-discipline-reports
+  - datapackage: data/people/mk_party_discipline_reports/datapackage.json
+  pipeline:
+  - run: load_resource
+    parameters:
+      url: ../data/people/mk_party_discipline_reports/datapackage.json
+      resource: 'report_.*'
+  - run: load_resource
+    parameters:
+      url: ../data/people/mk_party_discipline_reports/datapackage.json
+      resource: details_knesset_20_all_meetings
+  - run: knesset.dump_to_xlsx
+    parameters:
+      out-file: ../data/people/mk_party_discipline_reports/export/export.xlsx
+      sheet-names:
+        details_knesset_20_all_meetings: 'כל הצבעות נגד ציות הכנסת ה-20'
+        report_knesset_20_all_meetings: 'הכנסת ה-20'
+        report_knesset_20_kenes_3_2017: 'הכנסת ה-20 מושב 3 - 2017'
+        report_knesset_20_kenes_4_2018: 'הכנסת ה-20 מושב 4 - 2018'
+      fields:
+        report:
+          mk_id:
+            title: מזהה הח"כ
+          mk_name:
+            title: שם הח"כ
+          faction_ids:
+            title: מזהה הסיעה
+          faction_names:
+            title: שם הסיעה
+          party_discipline_votes:
+            title: מספר ההצבעות התואמות לציות המפלגתי
+          party_non_discipline_votes:
+            title: מספר ההצבעות בניגוד לציות המפלגתי
+        details:
+          vote_id:
+            title: מזהה ההצבעה
+          vote_url:
+            title: פרטי ההצבעה באתר הכנסת
+          vote_datetime:
+            title: זמן ההצבעה
+          vote_knesset:
+            title: מספר הכנסת
+          vote_plenum:
+            title: מספר הכנס
+          vote_assembly:
+            title: מספר המושב
+          vote_pagra:
+            title: האם בזמן פגרה?
+          mk_id:
+            title: מזהה הח"כ
+          mk_name:
+            title: שם הח"כ
+          faction_id:
+            title: מזהה הסיעה
+          faction_name:
+            title: שם הסיעה
+          vote_majority:
+            title: כיצד הצביעה רוב הסיעה
+  - run: knesset.sync
+    parameters:
+      source: "../data/people/mk_party_discipline_reports/export"
+      target: "gs://knesset-data-pipelines/data/people/mk_party_discipline_reports/export"

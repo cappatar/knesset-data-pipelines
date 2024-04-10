@@ -5,6 +5,9 @@ import yaml
 from datapackage_pipelines_knesset.common import object_storage
 import json
 import requests
+import psutil
+from datapackage_pipelines_metrics.influxdb import send_metric
+import time
 
 
 @contextmanager
@@ -75,6 +78,10 @@ def get_pipeline_schema(pipeline_spec, pipeline_id):
     bucket = pipeline_spec
     if pipeline_id == 'committee_meeting_protocols_parsed':
         object_name = "table-schemas/committee_meeting_protocols_parsed.json"
+    elif pipeline_id == "committee-meeting-attendees":
+        object_name = "table-schemas/committee_meeting_attendees.json"
+    elif pipeline_id == "committee-meeting-speakers":
+        object_name = "table-schemas/committee_meeting_speakers.json"
     else:
         object_name = "table-schemas/{}.json".format(pipeline_id)
     s3 = object_storage.get_s3()
@@ -86,3 +93,20 @@ def get_pipeline_schema(pipeline_spec, pipeline_id):
         res = requests.get(url)
         res.raise_for_status()
         return res.json()
+
+
+@contextmanager
+def process_metrics(measurement, tags, interval_seconds=5):
+    p = psutil.Process()
+
+    def callback(refresh=False):
+        if refresh:
+            callback.last_time_seconds = 0
+        cur_time_seconds = int(time.time())
+        if cur_time_seconds - callback.last_time_seconds >= interval_seconds:
+            send_metric(measurement, tags,
+                        {'cpu_core_percent': p.cpu_percent(interval=1),
+                         'memory_rss': p.memory_info().rss})
+        callback.last_time_seconds = cur_time_seconds
+    callback(True)
+    yield callback

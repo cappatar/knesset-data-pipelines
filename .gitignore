@@ -11,7 +11,6 @@ __pycache__/
 env/
 build/
 develop-eggs/
-dist/
 downloads/
 eggs/
 .eggs/
@@ -119,3 +118,9 @@ devops/k8s/Chart.yaml
 devops/k8s/charts/*/Chart.yaml
 devops/k8s/secrets.env.production
 *.secret.env
+secret*
+.dpp
+.code
+jupyter-notebooks/data
+.checkpoints
+
